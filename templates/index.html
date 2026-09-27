@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhishGuard - URL Analyzer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main>
+        <header class="topbar">
+            <div class="brand">
+                <div class="brand-icon" aria-hidden="true"></div>
+                <div>
+                    <h1>PhishGuard</h1>
+                    <p>Machine Learning-Based URL & Text Pattern Analysis System</p>
+                </div>
+            </div>
+            <p class="model-status"><span class="status-dot"></span>Model active - Naive Bayes</p>
+        </header>
+
+        <nav class="tabs" aria-label="Analysis sections">
+            <a class="tab-link {% if active_tab == 'url' %}active{% endif %}" href="{{ url_for('index') }}">URL Analyzer</a>
+            <a class="tab-link {% if active_tab == 'text' %}active{% endif %}" href="{{ url_for('text_link_analyzer') }}">Text Link Analyzer</a>
+            <a class="tab-link {% if active_tab == 'insights' %}active{% endif %}" href="{{ url_for('model_insights') }}">Model Insights</a>
+        </nav>
+
+        <section class="card scanner-card" aria-label="URL analyzer">
+            <form class="scan-form" method="POST">
+                <div class="input-shell">
+                    <span class="search-icon" aria-hidden="true"></span>
+                    <label class="visually-hidden" for="url">Website URL</label>
+                    <input
+                        id="url"
+                        type="text"
+                        name="url"
+                        value="{{ submitted_url }}"
+                        placeholder="https://www.google.com"
+                        autocomplete="url"
+                        required
+                    >
+                </div>
+                <button type="submit">Analyse</button>
+            </form>
+
+            {% if result %}
+                <section class="result {{ result.status }}" aria-live="polite">
+                    <div class="result-icon">{% if result.status == "safe" %}✓{% elif result.status == "danger" %}!{% else %}?{% endif %}</div>
+                    <div>
+                        <h2>{{ result.label }}</h2>
+                        <p>{{ submitted_url }}</p>
+                    </div>
+                </section>
+            {% endif %}
+        </section>
+
+        <section class="stats" aria-label="Scan statistics">
+            <div class="card stat">
+                <strong>{{ stats.checked }}</strong>
+                <span>Checked</span>
+            </div>
+            <div class="card stat safe">
+                <strong>{{ stats.safe }}</strong>
+                <span>Safe</span>
+            </div>
+            <div class="card stat danger">
+                <strong>{{ stats.phishing }}</strong>
+                <span>Phishing</span>
+            </div>
+            <div class="card stat">
+                <strong>{{ stats.threat_rate }}%</strong>
+                <span>Threat rate</span>
+            </div>
+        </section>
+
+        <section class="analysis-grid" aria-label="URL analysis details">
+            <div class="card panel">
+                <h2 class="panel-title">Risk Score</h2>
+                <p class="risk-score {% if analysis.risk_score <= 25 %}safe{% endif %}">{{ analysis.risk_score }}/100</p>
+                <div class="risk-track" aria-hidden="true">
+                    <div class="risk-fill" style="width: {{ analysis.risk_score }}%;"></div>
+                </div>
+                <div class="risk-scale">
+                    <span>Safe</span>
+                    <span>Risky</span>
+                </div>
+            </div>
+
+            <div class="card panel">
+                <h2 class="panel-title">URL Features</h2>
+                <div class="feature-list">
+                    {% for feature in analysis.features %}
+                        <div class="feature-row">
+                            <span>{{ feature.name }}</span>
+                            <span class="feature-badge {{ feature.status }}">{{ feature.value }}</span>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </section>
+
+        <section class="card wide-card explain-card" aria-labelledby="explain-title">
+            <h2 class="panel-title" id="explain-title">Why The Model Flagged This URL</h2>
+            <p class="panel-copy">Feature-engineering view of the lexical signals used to support the prediction.</p>
+            <ul class="contribution-list">
+                {% for reason in analysis.reasons %}
+                    <li class="contribution-item">
+                        <div>
+                            <strong>{{ reason.feature }}</strong>
+                            <span>{{ reason.value }}</span>
+                        </div>
+                        <span class="contribution-score">+{{ reason.contribution }}</span>
+                    </li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <section class="analysis-grid" aria-label="Domain and brand insights">
+            <div class="card panel">
+                <h2 class="panel-title">Domain Characteristics</h2>
+                <div class="metric-list">
+                    <div class="metric-row"><span>Domain age</span><strong>{{ domain_info.domain_age }}</strong></div>
+                    <div class="metric-row"><span>Domain length</span><strong>{{ domain_info.domain_length }}</strong></div>
+                    <div class="metric-row"><span>TLD type</span><strong>{{ domain_info.tld_type }}</strong></div>
+                    <div class="metric-row"><span>HTTPS presence</span><strong>{{ domain_info.https_presence }}</strong></div>
+                    <div class="metric-row"><span>Subdomain count</span><strong>{{ domain_info.subdomain_count }}</strong></div>
+                    <div class="metric-row"><span>Registrar</span><strong>{{ domain_info.registrar }}</strong></div>
+                    <div class="metric-row"><span>WHOIS availability</span><strong>{{ domain_info.whois_availability }}</strong></div>
+                </div>
+            </div>
+
+            <div class="card panel">
+                <h2 class="panel-title">Brand Similarity Analysis</h2>
+                <div class="metric-list">
+                    <div class="metric-row"><span>Closest brand</span><strong>{{ brand_spoof.brand }}</strong></div>
+                    <div class="metric-row"><span>Similarity score</span><strong>{{ brand_spoof.score }}%</strong></div>
+                    <div class="metric-row"><span>Lexical risk</span><strong>{{ brand_spoof.risk }}</strong></div>
+                    <div class="metric-row"><span>Heuristic note</span><strong>{{ brand_spoof.details }}</strong></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="card wide-card section-gap">
+            <h2 class="panel-title">Smart Recommendations</h2>
+            <ul class="recommendation-list">
+                {% for item in recommendations %}
+                    <li>{{ item }}</li>
+                {% endfor %}
+            </ul>
+        </section>
+
+        <section class="card history-card" aria-labelledby="history-title">
+            <h2 class="panel-title" id="history-title">Scan History</h2>
+            {% if history %}
+                <ul class="history-list">
+                    {% for item in history %}
+                        <li class="history-item">
+                            <span class="history-dot {{ item.status }}"></span>
+                            <span class="history-url">{{ item.url }}</span>
+                            <span class="history-badge {{ item.status }}">{% if item.status == "safe" %}safe{% elif item.status == "danger" %}phishing{% else %}unknown{% endif %}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="empty-history">Checked websites will appear here.</p>
+            {% endif %}
+        </section>
+
+        <section class="card resource-card" aria-labelledby="resource-title">
+            <h2 id="resource-title">How To Stop Phishing URLs</h2>
+            <p>Use these quick rules before trusting a link, then open the linked resources for deeper guidance.</p>
+
+            <nav class="resource-nav" aria-label="Phishing safety resources">
+                <a class="resource-link" href="https://youtu.be/JlQovysQBn0" target="_blank" rel="noopener noreferrer">
+                    <strong>CISA Awareness</strong>
+                    <span>Official phishing awareness video</span>
+                </a>
+                <a class="resource-link" href="https://www.cybercrime.gov.in/Webform/Accept.aspx" target="_blank" rel="noopener noreferrer">
+                    <strong>Report Cyber Crime</strong>
+                    <span>National Cyber Crime Reporting Portal</span>
+                </a>
+                <a class="resource-link" href="https://www.valimail.com/resources/guides/guide-to-phishing/url-phishing-real-world-examples-strategies/" target="_blank" rel="noopener noreferrer">
+                    <strong>URL Examples</strong>
+                    <span>Real-world phishing URL strategies</span>
+                </a>
+                <a class="resource-link" href="https://www.fortinet.com/resources/cyberglossary/url-phishing" target="_blank" rel="noopener noreferrer">
+                    <strong>Fortinet Guide</strong>
+                    <span>URL phishing glossary and prevention</span>
+                </a>
+            </nav>
+
+            <div class="rules-grid">
+                <div class="rule-item">
+                    <strong>Verify the real domain</strong>
+                    <span>Read the domain carefully before the first slash, and watch for misspellings or extra words.</span>
+                </div>
+                <div class="rule-item">
+                    <strong>Avoid urgent login links</strong>
+                    <span>Be cautious with links demanding account verification, password reset, payment, or immediate action.</span>
+                </div>
+                <div class="rule-item">
+                    <strong>Check HTTPS, not only the lock</strong>
+                    <span>HTTPS helps, but phishing sites can also use HTTPS. Combine it with domain checks.</span>
+                </div>
+                <div class="rule-item">
+                    <strong>Report suspicious URLs</strong>
+                    <span>If a link looks harmful, avoid entering data and report it through official channels.</span>
+                </div>
+            </div>
+        </section>
+    </main>
+</body>
+</html>

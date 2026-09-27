@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhishGuard - Model Insights</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main>
+        <header class="topbar">
+            <div class="brand">
+                <div class="brand-icon" aria-hidden="true"></div>
+                <div>
+                    <h1>PhishGuard</h1>
+                    <p>Machine Learning-Based URL & Text Pattern Analysis System</p>
+                </div>
+            </div>
+            <p class="model-status"><span class="status-dot"></span>Model active - Naive Bayes</p>
+        </header>
+
+        <nav class="tabs" aria-label="Analysis sections">
+            <a class="tab-link {% if active_tab == 'url' %}active{% endif %}" href="{{ url_for('index') }}">URL Analyzer</a>
+            <a class="tab-link {% if active_tab == 'text' %}active{% endif %}" href="{{ url_for('text_link_analyzer') }}">Text Link Analyzer</a>
+            <a class="tab-link {% if active_tab == 'insights' %}active{% endif %}" href="{{ url_for('model_insights') }}">Model Insights</a>
+        </nav>
+
+        <section class="stats" aria-label="Model session statistics">
+            <div class="card stat">
+                <strong>{{ stats.checked }}</strong>
+                <span>Session samples</span>
+            </div>
+            <div class="card stat safe">
+                <strong>{{ stats.safe }}</strong>
+                <span>Safe class</span>
+            </div>
+            <div class="card stat danger">
+                <strong>{{ stats.phishing }}</strong>
+                <span>Phishing class</span>
+            </div>
+            <div class="card stat">
+                <strong>{{ stats.threat_rate }}%</strong>
+                <span>Class ratio</span>
+            </div>
+        </section>
+
+        <section class="insight-grid">
+            <div class="card panel">
+                <h2 class="panel-title">Pipeline Overview</h2>
+                <div class="metric-list">
+                    <div class="metric-row"><span>Input type</span><strong>URL text</strong></div>
+                    <div class="metric-row"><span>Preprocessing</span><strong>Protocol/www cleanup</strong></div>
+                    <div class="metric-row"><span>Vectorization</span><strong>Saved CountVectorizer</strong></div>
+                    <div class="metric-row"><span>Classifier</span><strong>Naive Bayes style demo</strong></div>
+                    <div class="metric-row"><span>Output classes</span><strong>good / bad</strong></div>
+                </div>
+            </div>
+
+            <div class="card panel">
+                <h2 class="panel-title">Feature Engineering</h2>
+                <p class="panel-copy">The dashboard adds interpretable lexical features around the model prediction for academic explanation.</p>
+                <div class="metric-list">
+                    <div class="metric-row"><span>HTTPS signal</span><strong>Binary</strong></div>
+                    <div class="metric-row"><span>Token signal</span><strong>Keyword match</strong></div>
+                    <div class="metric-row"><span>Length signal</span><strong>Character count</strong></div>
+                    <div class="metric-row"><span>Brand spoof signal</span><strong>Fuzzy similarity</strong></div>
+                    <div class="metric-row"><span>Subdomain signal</span><strong>Host depth</strong></div>
+                </div>
+            </div>
+        </section>
+
+        <section class="card wide-card section-gap">
+            <h2 class="panel-title">Recent Session Samples</h2>
+            {% if history %}
+                <ul class="history-list">
+                    {% for item in history %}
+                        <li class="history-item">
+                            <span class="history-dot {{ item.status }}"></span>
+                            <span class="history-url">{{ item.url }}</span>
+                            <span class="history-badge {{ item.status }}">{% if item.status == "safe" %}safe{% elif item.status == "danger" %}phishing{% else %}unknown{% endif %}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% else %}
+                <p class="empty-history">Run URL analysis to collect session samples for this panel.</p>
+            {% endif %}
+        </section>
+    </main>
+</body>
+</html>

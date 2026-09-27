@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhishGuard - Text Link Analyzer</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <main>
+        <header class="topbar">
+            <div class="brand">
+                <div class="brand-icon" aria-hidden="true"></div>
+                <div>
+                    <h1>PhishGuard</h1>
+                    <p>Machine Learning-Based URL & Text Pattern Analysis System</p>
+                </div>
+            </div>
+            <p class="model-status"><span class="status-dot"></span>Model active - Naive Bayes</p>
+        </header>
+
+        <nav class="tabs" aria-label="Analysis sections">
+            <a class="tab-link {% if active_tab == 'url' %}active{% endif %}" href="{{ url_for('index') }}">URL Analyzer</a>
+            <a class="tab-link {% if active_tab == 'text' %}active{% endif %}" href="{{ url_for('text_link_analyzer') }}">Text Link Analyzer</a>
+            <a class="tab-link {% if active_tab == 'insights' %}active{% endif %}" href="{{ url_for('model_insights') }}">Model Insights</a>
+        </nav>
+
+        <section class="card scanner-card" aria-label="Text link analyzer">
+            <form method="POST">
+                <div class="textarea-shell">
+                    <span class="search-icon" aria-hidden="true"></span>
+                    <label class="visually-hidden" for="message_text">Email, SMS, or message text</label>
+                    <textarea id="message_text" name="message_text" placeholder="Paste email, SMS, or message text containing URLs...">{{ message_text }}</textarea>
+                </div>
+                <button class="section-gap" type="submit" style="background: var(--blue);">Extract & Analyse Links</button>
+            </form>
+        </section>
+
+        <section class="card wide-card section-gap">
+            <h2 class="panel-title">Message Analysis Results</h2>
+            <p class="panel-copy">Comprehensive ML-based assessment of message content, semantic tokens, and embedded URLs.</p>
+
+            {% if error_message %}
+                <div style="color: #d93025; background: #fce8e6; padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+                    <strong>Error:</strong> {{ error_message }}
+                </div>
+            {% endif %}
+            
+            {% if info_message %}
+                <div style="color: #1a73e8; background: #e8f0fe; padding: 12px; border-radius: 8px; margin-bottom: 16px;">
+                    <strong>Notice:</strong> {{ info_message }}
+                </div>
+            {% endif %}
+
+            {% if analysis_result %}
+                <!-- 1. Overall Message Analysis -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px;">
+                    <div style="background: var(--bg-tertiary); padding: 16px; border-radius: 8px;">
+                        <h3 style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 8px; font-weight: 500;">Message Type</h3>
+                        <p style="font-size: 1.5rem; font-weight: 600; color: {% if analysis_result.message_prediction == 'Spam' %}var(--error-color){% else %}var(--success-color){% endif %}">
+                            {{ analysis_result.message_prediction }}
+                        </p>
+                    </div>
+                    <div style="background: var(--bg-tertiary); padding: 16px; border-radius: 8px;">
+                        <h3 style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 8px; font-weight: 500;">Confidence</h3>
+                        <p style="font-size: 1.5rem; font-weight: 600;">{{ analysis_result.confidence_score }}%</p>
+                    </div>
+                    <div style="background: var(--bg-tertiary); padding: 16px; border-radius: 8px;">
+                        <h3 style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 8px; font-weight: 500;">Message Risk Score</h3>
+                        <p style="font-size: 1.5rem; font-weight: 600;">{{ analysis_result.message_risk_score }}/100</p>
+                    </div>
+                    <div style="background: var(--bg-tertiary); padding: 16px; border-radius: 8px;">
+                        <h3 style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 8px; font-weight: 500;">Risk Label</h3>
+                        {% set label_color = 'var(--text-primary)' %}
+                        {% if analysis_result.risk_label == 'Low' %}{% set label_color = 'var(--success-color)' %}
+                        {% elif analysis_result.risk_label == 'Moderate' %}{% set label_color = '#fbbc04' %}
+                        {% elif analysis_result.risk_label == 'High' %}{% set label_color = '#f29900' %}
+                        {% elif analysis_result.risk_label == 'Critical' %}{% set label_color = 'var(--error-color)' %}
+                        {% endif %}
+                        <p style="font-size: 1.5rem; font-weight: 600; color: {{ label_color }}">
+                            {{ analysis_result.risk_label }}
+                        </p>
+                    </div>
+                </div>
+
+                <!-- 2. Suspicious Tokens -->
+                {% if analysis_result.suspicious_tokens %}
+                    <div style="margin-bottom: 24px;">
+                        <h3 style="font-size: 1rem; margin-bottom: 12px; font-weight: 600;">Suspicious Tokens Found</h3>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            {% for token in analysis_result.suspicious_tokens %}
+                                <span style="background: rgba(234, 67, 53, 0.1); color: var(--error-color); padding: 6px 14px; border-radius: 16px; font-size: 0.85rem; font-weight: 600; text-transform: lowercase;">
+                                    {{ token }}
+                                </span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                <!-- 3. Final Recommendation -->
+                <div style="margin-bottom: 24px; padding: 16px; border-left: 4px solid {% if analysis_result.message_prediction == 'Spam' %}var(--error-color){% else %}var(--success-color){% endif %}; background: var(--bg-tertiary); border-radius: 0 8px 8px 0;">
+                    <h3 style="font-size: 1rem; margin-bottom: 6px; font-weight: 600;">Final Recommendation</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.95rem; line-height: 1.5;">
+                        {% if analysis_result.risk_label == 'Critical' %}
+                            High spam probability with malicious indicators. Do not click any links or reply to the sender.
+                        {% elif analysis_result.risk_label == 'High' %}
+                            Elevated risk detected. Message contains suspicious language or links. Proceed with extreme caution.
+                        {% elif analysis_result.risk_label == 'Moderate' %}
+                            Moderate risk. Verify the sender's identity before interacting with the message or its contents.
+                        {% else %}
+                            Low risk detected. The message appears safe, but standard precautions should always apply.
+                        {% endif %}
+                    </p>
+                </div>
+
+                <!-- 4. Extracted Links Table -->
+                {% if analysis_result.url_results %}
+                    <h3 style="font-size: 1rem; margin-bottom: 12px; font-weight: 600;">Extracted URL Analysis</h3>
+                    <div class="results-table">
+                        <div class="table-row table-head">
+                            <span>URL</span>
+                            <span>Prediction</span>
+                            <span>Risk Score</span>
+                            <span>Key Features</span>
+                        </div>
+                        {% for item in analysis_result.url_results %}
+                            <div class="table-row">
+                                <span class="mono" style="word-break: break-all; padding-right: 12px;">{{ item.url }}</span>
+                                <span class="history-badge {{ item.prediction }}">{% if item.prediction == "safe" %}safe{% elif item.prediction == "danger" %}phishing{% else %}unknown{% endif %}</span>
+                                <strong>{{ item.risk_score }}/100</strong>
+                                <span style="font-size: 0.85rem; color: var(--text-secondary);">
+                                    {% for feature in item.key_features %}
+                                        {{ feature.feature }}{% if not loop.last %}, {% endif %}
+                                    {% endfor %}
+                                </span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                
+            {% elif not error_message %}
+                <p class="empty-history">Paste message text and run analysis to see full NLP evaluation and extracted URLs here.</p>
+            {% endif %}
+        </section>
+    </main>
+</body>
+</html>
